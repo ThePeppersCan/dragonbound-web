@@ -5,6 +5,12 @@
   "observability": {
     "enabled": true
   },
+  "routes": [
+    {
+      "pattern": "dragonbound.repocompany.uk",
+      "custom_domain": true
+    }
+  ],
   "assets": {
     "directory": "dist"
   }
