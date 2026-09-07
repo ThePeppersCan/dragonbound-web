@@ -35,6 +35,36 @@
   const embedded = window.parent !== window;
   let opened = false;
   let accountTimer = 0;
+  let gameOverlayWasOpen = false;
+  let gameOverlayObserver = null;
+
+  function requestParentClose() {
+    if (!embedded || !bridge) return false;
+    window.clearTimeout(accountTimer);
+    window.parent.postMessage({ type: 'dragonbound-app-close', bridge }, REPO_ORIGIN);
+    return true;
+  }
+
+  function watchForGameClose(overlay) {
+    gameOverlayObserver?.disconnect();
+    gameOverlayWasOpen = overlay.classList.contains('is-open');
+    gameOverlayObserver = new MutationObserver(() => {
+      const isOpen = overlay.classList.contains('is-open');
+      if (isOpen) {
+        gameOverlayWasOpen = true;
+        return;
+      }
+      // The legacy game correctly uses Escape to close its own overlay after
+      // nested panels have been dismissed. In the standalone iframe that used
+      // to leave an empty black document behind. Hand that final close back to
+      // Repo Company instead.
+      if (gameOverlayWasOpen) {
+        gameOverlayWasOpen = false;
+        requestParentClose();
+      }
+    });
+    gameOverlayObserver.observe(overlay, { attributes: true, attributeFilter: ['class', 'aria-hidden'] });
+  }
 
   const auth = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
@@ -57,6 +87,7 @@
     if (!overlay?.openDragonbound || opened) return false;
     opened = true;
     overlay.openDragonbound();
+    watchForGameClose(overlay);
     gate().classList.add('is-ready');
     return true;
   }
@@ -80,6 +111,24 @@
     if (copy) copy.textContent = message || 'Open Dragonbound through your Repo Company account to connect your cloud saves.';
   }
 
+  async function hydrateRepoAccount() {
+    // The Supabase session can arrive after the legacy Repo Company script has
+    // already performed its signed-out startup check. Load the character again
+    // before opening Dragonbound so cloud saves are scoped to the real account
+    // instead of the fallback "guest" identity.
+    const deadline = Date.now() + 8000;
+    while (typeof window.repoLoadDragonboundCharacter !== 'function' && Date.now() < deadline) {
+      await new Promise(resolve => window.setTimeout(resolve, 40));
+    }
+    if (typeof window.repoLoadDragonboundCharacter !== 'function') {
+      throw new Error('Your Repo Company profile is still loading. Close Dragonbound and try again.');
+    }
+    const keeper = await window.repoLoadDragonboundCharacter();
+    if (!keeper) {
+      throw new Error('Your Repo Company character could not be loaded. Close Dragonbound and try again.');
+    }
+  }
+
   async function acceptSession(data) {
     window.clearTimeout(accountTimer);
     if (!data?.accessToken || !data?.refreshToken) {
@@ -92,6 +141,12 @@
     });
     if (error) {
       showAccountGate(error.message || 'Your Repo Company account could not be connected.');
+      return;
+    }
+    try {
+      await hydrateRepoAccount();
+    } catch (profileError) {
+      showAccountGate(profileError?.message);
       return;
     }
     waitForGame();
@@ -113,9 +168,7 @@
       if (!close) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (embedded && bridge) {
-        window.parent.postMessage({ type: 'dragonbound-app-close', bridge }, REPO_ORIGIN);
-      } else {
+      if (!requestParentClose()) {
         location.href = REPO_ORIGIN + '/';
       }
     }, true);
@@ -135,7 +188,13 @@
     }
 
     const { data } = await auth.auth.getSession();
-    if (data?.session) waitForGame();
-    else showAccountGate();
+    if (data?.session) {
+      try {
+        await hydrateRepoAccount();
+        waitForGame();
+      } catch (profileError) {
+        showAccountGate(profileError?.message);
+      }
+    } else showAccountGate();
   }, { once: true });
 })();

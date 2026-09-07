@@ -443,6 +443,32 @@ async function loadCharacter() {
   scheduleSpawn();
 }
 
+// Dragonbound's standalone page intentionally does not contain Repo Company's
+// full dashboard DOM, so its late-arriving auth bridge must not call the full
+// renderCharacter() path. Hydrate only the account identity needed to scope the
+// permanent cloud save, then notify Dragonbound's own listeners.
+async function loadDragonboundStandaloneCharacter() {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) {
+    character = null;
+    document.body.classList.remove('repo-logged-in');
+    document.body.classList.add('repo-logged-out');
+    return null;
+  }
+  const { data, error } = await db.rpc('get_my_character');
+  if (error) {
+    console.error('Could not load the Dragonbound keeper.', error);
+    character = null;
+    return null;
+  }
+  character = data?.[0] || null;
+  document.body.classList.toggle('repo-logged-in', Boolean(character));
+  document.body.classList.toggle('repo-logged-out', !character);
+  window.dispatchEvent(new CustomEvent('repo-character-changed'));
+  return character;
+}
+window.repoLoadDragonboundCharacter = loadDragonboundStandaloneCharacter;
+
 async function registerAccount(username, password) {
   const email = usernameToEmail(username);
   const { data, error } = await db.auth.signUp({
@@ -8050,12 +8076,16 @@ db.channel('counter-live')
 db.auth.onAuthStateChange((_event, session) => {
   if (!session) {
     character = null;
-    renderCharacter();
+    if (document.documentElement.classList.contains('dragonbound-standalone')) {
+      document.body.classList.remove('repo-logged-in');
+      document.body.classList.add('repo-logged-out');
+    } else renderCharacter();
   }
 });
 
 loadCount();
-loadCharacter();
+if (document.documentElement.classList.contains('dragonbound-standalone')) loadDragonboundStandaloneCharacter();
+else loadCharacter();
 
 // Watch for a removed event node, a cancelled browser timer or a page restore.
 // This keeps the three random skilling circles alive without allowing duplicates.
@@ -44092,23 +44122,12 @@ document.head.appendChild(s)})();
 
         homeScene?.classList.remove('is-visible');
         homeScene?.setAttribute('aria-hidden','true');
-        if(locked && !dragon){
-          selectedAdoptionEgg=locked;
-          newGameStage.classList.add('is-adoption-interior');
-          adoptionInteriorAudio.volume=0;
-          const p=adoptionInteriorAudio.play();
-          if(p&&typeof p.catch==='function')p.catch(()=>{});
-          fadeAudio(adoptionInteriorAudio,0.6,850);
-          dialogueMode='adoption-interior';
-          transitionTimerB=setTimeout(()=>{
-            blackout.classList.remove('is-black');
-            openBonnieMenu();
-          },220);
-          return;
-        }
-
-        // A pet without a current starter house is an abnormal but recoverable
-        // state: load directly at Hearth & Key so the player can pick a home.
+        // A locked egg is already a valid cloud save, even if the player left
+        // before choosing a house. Resume that incomplete onboarding at Hearth
+        // & Key instead of dropping them back at Bonnie's with a dead Home
+        // button. Their permanent egg remains selected and is delivered after
+        // they choose a starter property.
+        if(locked) selectedAdoptionEgg=locked;
         newGameStage.classList.add('is-estate-interior');
         estateInteriorAudio.volume=0;
         const p=estateInteriorAudio.play();
@@ -44117,7 +44136,9 @@ document.head.appendChild(s)})();
         dialogueMode='estate-interior';
         transitionTimerB=setTimeout(()=>{
           blackout.classList.remove('is-black');
-          showFeedback('Choose a starter home to continue your Dragonbound save.');
+          showFeedback(locked&&!dragon
+            ? `${locked.name} egg restored from your cloud save. Choose a free starter home with Mira to continue.`
+            : 'Choose a starter home to continue your Dragonbound save.');
         },220);
       },520);
     };
