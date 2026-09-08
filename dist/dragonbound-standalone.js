@@ -28,9 +28,13 @@
   const params = new URLSearchParams(location.search);
   const localPreview = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
   const requestedRepoOrigin = params.get('repoOrigin') || '';
-  const REPO_ORIGIN = localPreview && /^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(requestedRepoOrigin)
+  // A hosted Dragonbound frame may be launched by a local Repo Company preview.
+  // Only exact loopback HTTP origins are accepted; arbitrary origins still fall
+  // back to production and every message also requires the parent window and nonce.
+  const localRepoOrigin = /^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(requestedRepoOrigin)
     ? requestedRepoOrigin
-    : 'https://repocompany.uk';
+    : '';
+  const REPO_ORIGIN = localRepoOrigin || 'https://repocompany.uk';
   const bridge = params.get('repoBridge') || '';
   const embedded = window.parent !== window;
   let opened = false;
