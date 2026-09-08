@@ -1,8 +1,8 @@
 (function(){
   'use strict';
-  // V34.34 — Greenwater Round Two uses the same Dragon Racing engine with track-specific race phases.
-  if(window.__dragonRacingRaceV3434)return;
-  window.__dragonRacingRaceV3434=true;
+  // V34.35 — Career Quick Sim uses readable progressive pacing and pauses for manual calls.
+  if(window.__dragonRacingRaceV3435)return;
+  window.__dragonRacingRaceV3435=true;
 
   const WORLD_W=1536,WORLD_H=1024,RACER_COUNT=6;
   // V34.29.7 — Competitive Field & Overtake Resolution
@@ -247,19 +247,44 @@
   function raceClockNow(){return state.raceStartedAt&&state.simClock?Math.max(state.raceStartedAt,state.simClock):now();}
   function raceElapsedMs(){return state.raceStartedAt?Math.max(0,raceClockNow()-state.raceStartedAt):(state.raceStartedEpochMs?Math.max(0,Date.now()-state.raceStartedEpochMs):0);}
   function seasonPresentationMode(){return isSeasonStoryRace()?normKey(state.storyRace?.presentationMode||'watch'):'watch';}
+  function seasonManualCallIsOpen(){
+    if(!isSeasonStoryRace())return false;
+    const index=Math.max(0,Number(state.storyRace?.seasonCallIndex)||0);
+    return Number(state.storyRace?.seasonCallVisible)===index;
+  }
+  function seasonQuickSimulationRate(){
+    const distance=Math.max(0,Number(state.player?.distance)||0),laps=activeLaps();
+    const raceProgress=clamp(distance/Math.max(1,laps),0,1);
+    const callIndex=Math.max(0,Number(state.storyRace?.seasonCallIndex)||0);
+    const manualCallIndex=isGreenwaterSeasonRace()?0:1;
+
+    // Quick Sim should shorten the routine running without turning two laps into a blur.
+    // It now eases down throughout the race, approaches the player's call at near-live
+    // speed, pauses the simulation while that call is open, and keeps the run to the flag
+    // readable after the choice has been made.
+    if(seasonManualCallIsOpen())return 0;
+    const nextCall=callIndex<=manualCallIndex?seasonRaceCallDefinition(manualCallIndex):null;
+    if(nextCall){
+      const routineRate=lerp(2.8,1.45,raceProgress);
+      const approachDistance=isGreenwaterSeasonRace()?.20:.18;
+      const distanceToCall=Number(nextCall.trigger)-distance;
+      if(distanceToCall<=approachDistance){
+        const approach=clamp(distanceToCall/approachDistance,0,1);
+        return lerp(1.08,Math.min(routineRate,1.65),approach);
+      }
+      return routineRate;
+    }
+    const finalLapProgress=clamp(distance-(laps-1),0,1);
+    return lerp(1.32,1.05,finalLapProgress);
+  }
   function seasonSimulationRate(){
     const mode=seasonPresentationMode();
+    // A manual pit-wall call is a real decision, not a timer: both Watch Live and Quick
+    // Sim freeze the race clock and field until the player answers it.
+    if(seasonManualCallIsOpen())return 0;
     if(mode==='full')return 12;
     if(mode!=='quick')return 1;
-    const callIndex=Math.max(0,Number(state.storyRace?.seasonCallIndex)||0),distance=Math.max(0,Number(state.player?.distance)||0);
-    // Greenwater has one major contextual decision: sprint to it, play it at normal speed, then sprint to the flag.
-    if(isGreenwaterSeasonRace()){
-      const decisive=seasonRaceCallDefinition(0);
-      if(callIndex===0&&distance>=(Number(decisive?.trigger)||Infinity)-.055)return 1;
-      return 7;
-    }
-    // Velmora keeps its routine first call + decisive second call.
-    const decisive=seasonRaceCallDefinition(1);if(callIndex===1&&distance>=(Number(decisive?.trigger)||Infinity)-.045)return 1;return 7;
+    return seasonQuickSimulationRate();
   }
   function activeSectors(){return activeTrack().sectors||[{id:'circuit',name:'Circuit',start:0,end:1}];}
   function sectorIndexForDistance(distance){const f=mod1(Math.max(0,Number(distance)||0)),sectors=activeSectors();for(let i=0;i<sectors.length;i++){const s=sectors[i];if(f>=Number(s.start||0)&&f<Number(s.end??1))return i;}return Math.max(0,sectors.length-1);}
@@ -1870,7 +1895,7 @@
   function admin(){return currentAccount()==='admin';}
   window.DragonRacingRace={start,stop,exitToTrackSelect,isActive,isStoryRace,getPlayerInfo,getProgression,refreshProgression,getTrackStats,getRewardInfo,formatTime,registerCareerTrack:registerLumerreCareerTrack};
   window.DragonRacingDebug={
-    inspect(){if(!admin())return null;return{phase:state.phase,player:state.player?{distance:state.player.distance,lateral:state.player.lateral,speed:state.player.speed,boost:state.player.boost,finished:state.player.finished,auto:true,raceLuck:state.player.ai?.raceLuck||0,tinyBias:state.player.ai?.extraBias||0,motion:racerMotionState(state.player,now())}:null,progression:getProgression(),stats:getTrackStats(),raceStory:{...state.raceStory},finalLap:state.finalLapDramaStarted};},
+    inspect(){if(!admin())return null;return{phase:state.phase,presentationMode:seasonPresentationMode(),simulationRate:seasonSimulationRate(),manualCallOpen:seasonManualCallIsOpen(),player:state.player?{distance:state.player.distance,lateral:state.player.lateral,speed:state.player.speed,boost:state.player.boost,finished:state.player.finished,auto:true,raceLuck:state.player.ai?.raceLuck||0,tinyBias:state.player.ai?.extraBias||0,motion:racerMotionState(state.player,now())}:null,progression:getProgression(),stats:getTrackStats(),raceStory:{...state.raceStory},finalLap:state.finalLapDramaStarted};},
     showPath(on=true){if(!admin())return false;state.debugPath=on!==false;state.game?.classList.toggle('is-debug-path',state.debugPath);return state.debugPath;},
     showCheckpoints(on=true){return this.showPath(on);},
     setLap(lap=1){if(!admin()||!state.player)return null;state.player.distance=Math.max(0,Number(lap)-1)+mod1(state.player.distance);return state.player.distance;},

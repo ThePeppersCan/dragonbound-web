@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const CAREER_URL = 'dragonbound-career-mode/index.html?v=v34-34-greenwater-round-two-20260828';
+  const CAREER_URL = 'dragonbound-career-mode/index.html?v=v34-35-career-race-pacing-20260908';
   const SUPABASE_URL = 'https://hvdrwmjieguurxvrgzfu.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_bln84LaJ8iYmnkYK9mh0Pg_XxP7O1OZ';
   const ACTIVE_CLASS = 'dragonbound-career-active';
