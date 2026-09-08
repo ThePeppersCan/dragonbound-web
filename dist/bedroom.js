@@ -426,7 +426,7 @@
 
   let state={roomId:'nordic_timber',placements:[],player:defaultPlayerForUser('guest'),version:1,updatedAt:null};
   let overlay=null, stage=null, roomImg=null, placementLayer=null, playerEl=null, petEl=null, interactionHintEl=null, shopPanel=null, roomPanel=null, petPanel=null, launcher=null, transitionVeil=null, doorAudio=null;
-  let editMode=false, placingItemId='', selectedId='', drag=null, saveTimer=0, open=false, transitioning=false, loadedForUser='', shopCategory='All', shopQuery='', petCategory='Cats';
+  let editMode=false, placingItemId='', selectedId='', drag=null, saveTimer=0, open=false, transitioning=false, closeRequested=false, loadedForUser='', shopCategory='All', shopQuery='', petCategory='Cats';
   let keys={up:false,down:false,left:false,right:false}, raf=0, lastTick=0, playerFrameTimer=0, playerFrame=0, interactionTargetId='', actionTimer=0, sleepingPlacementId='', activeInteractionPlacementId='';
   let petState={selectedId:'',nickname:'',x:.43,y:.84,dir:'right',mode:'idle',frame:0,frameTimer:0,targetX:null,targetY:null,targetPlacementId:'',plannedKind:'',mountedPlacementId:'',actionUntil:0,nextDecisionAt:0,lastPlacementId:'',lastSavedAt:0};
   let loadedPetForUser='', petSaveTimer=0;
@@ -703,13 +703,16 @@
     window.addEventListener('pointermove',onWindowPointerMove,{passive:false});
     window.addEventListener('pointerup',onWindowPointerUp,{passive:false});
     window.addEventListener('pointercancel',onWindowPointerUp,{passive:false});
-    window.addEventListener('keydown',onKeyDown);
+    // Capture lets the bedroom consume Escape before the parent Dragonbound
+    // shell mistakes it for a request to close the entire game.
+    window.addEventListener('keydown',onKeyDown,true);
     window.addEventListener('keyup',onKeyUp);
     renderCategories();renderRoomChoices();renderShop();renderPets();
   }
 
   async function openBedroom(){
     if(open||transitioning)return;
+    closeRequested=false;
     transitioning=true;
     ensureTransitionVeil();playBedroomDoor();
     transitionVeil.classList.add('is-active');
@@ -726,6 +729,7 @@
     transitionVeil.classList.remove('is-active');
     await wait(460);
     transitioning=false;
+    if(closeRequested){closeRequested=false;returnToMainHouse();}
   }
 
   function closeBedroom(){
@@ -736,7 +740,8 @@
     document.body.classList.remove('velmora-bedroom-open');stopLoop();queueSave();
   }
   async function returnToMainHouse(){
-    if(!open||transitioning)return;
+    if(!open)return;
+    if(transitioning){closeRequested=true;return;}
     transitioning=true;
     ensureTransitionVeil();
     transitionVeil.classList.add('is-active');
@@ -944,6 +949,7 @@
     if(!editMode&&(key==='e')){event.preventDefault();interactNearby();return;}
     if(editMode&&selectedId&&key==='r'){event.preventDefault();flipSelected();return;}
     if(event.key==='Escape'){
+      event.stopImmediatePropagation();
       if(placingItemId){placingItemId='';hideGhost();renderEditState();event.preventDefault();return;}
       if(shopPanel?.classList.contains('is-visible')){toggleShop(false);event.preventDefault();return;}
       if(roomPanel?.classList.contains('is-visible')){toggleRooms(false);event.preventDefault();return;}

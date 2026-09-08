@@ -98,7 +98,7 @@ function cleanupFurnitureSpriteData(sourceImg){
   class DragonboundFurnitureSystem{
     constructor(){
       this.stage=null;this.homeScene=null;this.world=null;this.babyLayer=null;this.layer=null;this.placementSurface=null;
-      this.overlay=null;this.placementHud=null;this.editHud=null;this.toast=null;this.buildHotspot=null;
+      this.overlay=null;this.placementHud=null;this.editHud=null;this.toast=null;this.buildHotspot=null;this.inventoryHotspot=null;
       this.houseId='';this.state={balance:0,catalog:[],inventory:[],placements:[]};
       this.inventory=new Map();this.catalog=new Map();this.placements=[];
       this.context='build';this.tab='owned';this.category='All';this.query='';this.rarity='All';this.sort='featured';this.selectedId='';this.page=1;this.lastWheelScaleAt=0;
@@ -120,6 +120,7 @@ function cleanupFurnitureSpriteData(sourceImg){
       window.dragonboundFurnitureInteractionProvider=()=>this.interactionSnapshot();
       window.DragonboundFurniture={
         open:()=>this.openBuild(),
+        inventory:()=>this.openBuild(),
         edit:()=>this.enterEditMode(),
         refresh:()=>this.refresh(true,true),
         state:()=>this.debugState(),
@@ -220,6 +221,10 @@ watchFurnitureSprites(){
       if(!btn){btn=document.createElement('button');btn.type='button';btn.className='dragonbound-home-sidebar-hotspot dragonbound-home-sidebar-hotspot--build';btn.setAttribute('aria-label','Open Build Inventory');sidebar.appendChild(btn);}
       if(btn.dataset.boundBuild!=='1'){btn.dataset.boundBuild='1';btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();this.openBuild();});}
       this.buildHotspot=btn;
+      let inventory=sidebar.querySelector('.dragonbound-home-sidebar-hotspot--inventory');
+      if(!inventory){inventory=document.createElement('button');inventory.type='button';inventory.className='dragonbound-home-sidebar-hotspot dragonbound-home-sidebar-hotspot--inventory';inventory.setAttribute('aria-label','Open Furniture Inventory');sidebar.appendChild(inventory);}
+      if(inventory.dataset.boundInventory!=='1'){inventory.dataset.boundInventory='1';inventory.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();this.openBuild();});}
+      this.inventoryHotspot=inventory;
     }
 
     ensureBonnieShop(){
@@ -869,7 +874,7 @@ syncPlacementImage(img,item){
     }
     onKey(e){
       const tag=document.activeElement?.tagName;if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
-      if(e.key==='Escape'){if(this.directDrag){e.preventDefault();const id=this.directDrag.placementId;this.clearEditDrag();this.cancelPlacement(false);this.enterEditMode();if(id)this.selectPlacement(id);return;}if(this.placementMode){e.preventDefault();this.cancelCurrentPlacement();return;}if(this.editMode){e.preventDefault();this.exitEditMode();return;}if(this.overlay?.classList.contains('is-visible')){e.preventDefault();this.close();return;}}
+      if(e.key==='Escape'){if(this.directDrag){e.preventDefault();e.stopImmediatePropagation();const id=this.directDrag.placementId;this.clearEditDrag();this.cancelPlacement(false);this.enterEditMode();if(id)this.selectPlacement(id);return;}if(this.placementMode){e.preventDefault();e.stopImmediatePropagation();this.cancelCurrentPlacement();return;}if(this.editMode){e.preventDefault();e.stopImmediatePropagation();this.exitEditMode();return;}if(this.overlay?.classList.contains('is-visible')){e.preventDefault();e.stopImmediatePropagation();this.close();return;}}
       if(e.key.toLowerCase()==='b'&&this.homeScene?.classList.contains('is-visible')){e.preventDefault();if(this.overlay?.classList.contains('is-visible'))this.close();else this.openBuild();}
       if((e.key.toLowerCase()==='r'||e.key.toLowerCase()==='q'||e.key.toLowerCase()==='e')&&this.placementMode){e.preventDefault();this.turnGhost();}if((e.key==='-'||e.key==='_')&&this.placementMode){e.preventDefault();this.resizeGhost(-SCALE_STEP);}if((e.key==='+'||e.key==='=')&&this.placementMode){e.preventDefault();this.resizeGhost(SCALE_STEP);}
     }

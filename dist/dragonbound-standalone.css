@@ -7,9 +7,44 @@ body {
   background: #02070a !important;
 }
 
-body.dragonbound-standalone > :not(#dragonboundOverlay):not(#dragonboundCareerOverlay):not(#dragonRacingModal):not(#dragonboundStandaloneGate):not(script):not(audio) {
+body.dragonbound-standalone > :not(#dragonboundOverlay):not(#dragonboundCareerOverlay):not(#dragonRacingModal):not(#dragonboundStandaloneGate):not(#dragonboundStandaloneToast):not(.velmora-bedroom-overlay):not(.velmora-bedroom-transition):not(.dragonbound-outings-overlay):not(.dragonbound-outing-destination):not(script):not(audio) {
   visibility: hidden !important;
   pointer-events: none !important;
+}
+
+#dragonboundStandaloneToast {
+  position: fixed;
+  left: 50%;
+  bottom: 34px;
+  z-index: 2147483646;
+  max-width: min(560px, calc(100vw - 40px));
+  padding: 11px 16px;
+  border: 1px solid rgba(162, 217, 195, .38);
+  border-radius: 10px;
+  background: rgba(7, 25, 27, .96);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .42);
+  color: #eef8f1;
+  font: 800 12px/1.4 Arial, sans-serif;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 8px);
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+#dragonboundStandaloneToast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* Feature screens are mounted on <body>, outside the legacy game overlay.
+   Keep them above the standalone shell so they receive both paint and input. */
+body.dragonbound-standalone > .velmora-bedroom-overlay,
+body.dragonbound-standalone > .velmora-bedroom-transition,
+body.dragonbound-standalone > .dragonbound-outings-overlay,
+body.dragonbound-standalone > .dragonbound-outing-destination,
+body.dragonbound-standalone > #dragonRacingModal,
+body.dragonbound-standalone > #dragonboundCareerOverlay {
+  z-index: 2147483646 !important;
 }
 
 #dragonboundStandaloneGate {
@@ -103,5 +138,110 @@ body.dragonbound-standalone #dragonboundOverlay {
   #dragonboundStandaloneGate .dragonbound-gate-spinner {
     transition: none;
     animation: none;
+  }
+}
+
+/* The book's command tiles are injected after the journal has rendered. They
+   need an explicit standalone skin or the site's legacy brown CTA styling wins. */
+body.dragonbound-standalone .dragonbound-my-dragon-overlay .dragonbound-journal-command-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+body.dragonbound-standalone .dragonbound-my-dragon-overlay button.dragonbound-journal-command-card {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  display: grid !important;
+  grid-template-columns: 28px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 9px !important;
+  min-height: 66px !important;
+  margin: 0 !important;
+  padding: 9px 10px !important;
+  border: 1px solid rgba(83, 104, 76, .24) !important;
+  border-radius: 9px !important;
+  background: linear-gradient(145deg, rgba(255, 253, 244, .94), rgba(232, 237, 215, .9)) !important;
+  background-image: linear-gradient(145deg, rgba(255, 253, 244, .94), rgba(232, 237, 215, .9)) !important;
+  box-shadow: inset 3px 0 0 rgba(84, 113, 81, .32), 0 3px 9px rgba(66, 78, 49, .07) !important;
+  color: #493c2b !important;
+  text-align: left !important;
+  text-shadow: none !important;
+  cursor: pointer !important;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease !important;
+}
+
+body.dragonbound-standalone .dragonbound-my-dragon-overlay button.dragonbound-journal-command-card:hover,
+body.dragonbound-standalone .dragonbound-my-dragon-overlay button.dragonbound-journal-command-card:focus-visible {
+  border-color: rgba(72, 108, 78, .52) !important;
+  background: linear-gradient(145deg, #fffef8, #e5ecd7) !important;
+  background-image: linear-gradient(145deg, #fffef8, #e5ecd7) !important;
+  box-shadow: inset 3px 0 0 rgba(66, 109, 76, .52), 0 6px 14px rgba(52, 77, 57, .12) !important;
+  transform: translateY(-1px) !important;
+  outline: none !important;
+}
+
+body.dragonbound-standalone .dragonbound-my-dragon-overlay button.dragonbound-journal-command-card.is-selected {
+  border-color: rgba(62, 104, 78, .62) !important;
+  background: linear-gradient(145deg, #edf3df, #dbe8cf) !important;
+  background-image: linear-gradient(145deg, #edf3df, #dbe8cf) !important;
+}
+
+body.dragonbound-standalone .dragonbound-my-dragon-overlay button.dragonbound-journal-command-card.is-locked {
+  border-color: rgba(111, 98, 73, .2) !important;
+  background: linear-gradient(145deg, #f4efdf, #e5ddc8) !important;
+  background-image: linear-gradient(145deg, #f4efdf, #e5ddc8) !important;
+  box-shadow: inset 3px 0 0 rgba(133, 116, 82, .25) !important;
+}
+
+body.dragonbound-standalone .dragonbound-my-dragon-overlay .dragonbound-journal-command-card > span {
+  display: grid !important;
+  place-items: center !important;
+  width: 28px !important;
+  height: 28px !important;
+  border: 1px solid rgba(76, 105, 77, .18) !important;
+  border-radius: 50% !important;
+  background: #dce7d5 !important;
+  color: #456249 !important;
+  text-shadow: none !important;
+}
+
+body.dragonbound-standalone .dragonbound-my-dragon-overlay .dragonbound-journal-command-card strong,
+body.dragonbound-standalone .dragonbound-my-dragon-overlay .dragonbound-journal-command-card b {
+  display: block !important;
+  color: #493b29 !important;
+  font-weight: 900 !important;
+  text-shadow: none !important;
+}
+
+body.dragonbound-standalone .dragonbound-my-dragon-overlay .dragonbound-journal-command-card small {
+  display: block !important;
+  margin-top: 3px !important;
+  color: #746650 !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  text-shadow: none !important;
+}
+
+body.dragonbound-standalone .dragonbound-my-dragon-overlay .dragonbound-journal-command-card i {
+  display: block !important;
+  height: 4px !important;
+  margin-top: 5px !important;
+  overflow: hidden !important;
+  border-radius: 99px !important;
+  background: rgba(73, 94, 65, .13) !important;
+}
+
+body.dragonbound-standalone .dragonbound-my-dragon-overlay .dragonbound-journal-command-card i > em {
+  display: block !important;
+  height: 100% !important;
+  border-radius: inherit !important;
+  background: linear-gradient(90deg, #628064, #b19c55) !important;
+}
+
+@media (max-width: 760px) {
+  body.dragonbound-standalone .dragonbound-my-dragon-overlay .dragonbound-journal-command-grid {
+    grid-template-columns: 1fr;
   }
 }
