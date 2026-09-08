@@ -34,7 +34,11 @@
   const localRepoOrigin = /^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(requestedRepoOrigin)
     ? requestedRepoOrigin
     : '';
-  const REPO_ORIGIN = localRepoOrigin || 'https://repocompany.uk';
+  const fileRepoOrigin = requestedRepoOrigin === 'null';
+  const REPO_ORIGIN = fileRepoOrigin ? 'null' : (localRepoOrigin || 'https://repocompany.uk');
+  // Browsers require "*" when posting to an opaque file:// origin. Incoming
+  // messages remain restricted to origin "null", the parent window and nonce.
+  const REPO_TARGET_ORIGIN = fileRepoOrigin ? '*' : REPO_ORIGIN;
   const bridge = params.get('repoBridge') || '';
   const embedded = window.parent !== window;
   let opened = false;
@@ -45,7 +49,7 @@
   function requestParentClose() {
     if (!embedded || !bridge) return false;
     window.clearTimeout(accountTimer);
-    window.parent.postMessage({ type: 'dragonbound-app-close', bridge }, REPO_ORIGIN);
+    window.parent.postMessage({ type: 'dragonbound-app-close', bridge }, REPO_TARGET_ORIGIN);
     return true;
   }
 
@@ -157,7 +161,8 @@
   }
 
   window.addEventListener('message', event => {
-    if (!embedded || event.source !== window.parent || event.origin !== REPO_ORIGIN) return;
+    const parentOriginMatches = fileRepoOrigin ? event.origin === 'null' : event.origin === REPO_ORIGIN;
+    if (!embedded || event.source !== window.parent || !parentOriginMatches) return;
     const data = event.data || {};
     if (data.type !== 'dragonbound-app-auth' || data.bridge !== bridge) return;
     void acceptSession(data);
@@ -178,7 +183,7 @@
     }, true);
 
     if (embedded && bridge) {
-      window.parent.postMessage({ type: 'dragonbound-app-ready', bridge }, REPO_ORIGIN);
+      window.parent.postMessage({ type: 'dragonbound-app-ready', bridge }, REPO_TARGET_ORIGIN);
       accountTimer = window.setTimeout(() => showAccountGate('Your Repo Company account connection timed out. Close Dragonbound and try again.'), 12000);
       return;
     }

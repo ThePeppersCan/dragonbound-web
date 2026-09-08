@@ -17,29 +17,36 @@ function resolveRepoOrigin(href) {
     URLSearchParams
   };
   vm.createContext(context);
-  vm.runInContext(`${originSource}\nthis.result = REPO_ORIGIN;`, context);
+  vm.runInContext(`${originSource}\nthis.result = { origin: REPO_ORIGIN, target: REPO_TARGET_ORIGIN };`, context);
   return context.result;
 }
 
 test('hosted Dragonbound accepts an explicitly supplied loopback parent', () => {
-  assert.equal(
-    resolveRepoOrigin('https://dragonbound.repocompany.uk/?repoOrigin=http%3A%2F%2F127.0.0.1%3A4173'),
-    'http://127.0.0.1:4173'
-  );
+  const result = resolveRepoOrigin('https://dragonbound.repocompany.uk/?repoOrigin=http%3A%2F%2F127.0.0.1%3A4173');
+  assert.equal(result.origin, 'http://127.0.0.1:4173');
+  assert.equal(result.target, 'http://127.0.0.1:4173');
 });
 
 test('normal hosted launches still trust production Repo Company', () => {
-  assert.equal(resolveRepoOrigin('https://dragonbound.repocompany.uk/'), 'https://repocompany.uk');
+  const result = resolveRepoOrigin('https://dragonbound.repocompany.uk/');
+  assert.equal(result.origin, 'https://repocompany.uk');
+  assert.equal(result.target, 'https://repocompany.uk');
 });
 
 test('arbitrary parent origins are rejected', () => {
-  assert.equal(
-    resolveRepoOrigin('https://dragonbound.repocompany.uk/?repoOrigin=https%3A%2F%2Fevil.example'),
-    'https://repocompany.uk'
-  );
+  const result = resolveRepoOrigin('https://dragonbound.repocompany.uk/?repoOrigin=https%3A%2F%2Fevil.example');
+  assert.equal(result.origin, 'https://repocompany.uk');
+  assert.equal(result.target, 'https://repocompany.uk');
+});
+
+test('hosted Dragonbound can reply to an opaque file parent', () => {
+  const result = resolveRepoOrigin('https://dragonbound.repocompany.uk/?repoOrigin=null');
+  assert.equal(result.origin, 'null');
+  assert.equal(result.target, '*');
 });
 
 test('session messages still require exact parent, origin and nonce', () => {
-  assert.match(standaloneSource, /event\.source !== window\.parent \|\| event\.origin !== REPO_ORIGIN/);
+  assert.match(standaloneSource, /fileRepoOrigin \? event\.origin === 'null' : event\.origin === REPO_ORIGIN/);
+  assert.match(standaloneSource, /event\.source !== window\.parent \|\| !parentOriginMatches/);
   assert.match(standaloneSource, /data\.type !== 'dragonbound-app-auth' \|\| data\.bridge !== bridge/);
 });
