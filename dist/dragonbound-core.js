@@ -1545,7 +1545,6 @@
     }
     async function startDragonTreatSequence(){
       const actor=activeDragonTreatActor();if(dragonTreatsBusy||!actor||!homeTreatStage||!homeTreatBagWrap||!homeTreatBagImage||!homeTreatGround)return;
-      if(dragonTreatBalance()<DRAGONBOUND_TREAT_COST){closeDragonTreatConfirm();dragonTreatToast(`You need ${DRAGONBOUND_TREAT_COST.toLocaleString('en-GB')} GP to buy Dragon Bites.`);return;}
       const count=Math.random()<.48?4:3,route=buildDragonTreatRoute(count);
       if(route.length<3){closeDragonTreatConfirm();dragonTreatToast('There is not enough clear floor space for a treat chase right now.',4200);return;}
       dragonTreatsBusy=true;syncTreatCooldownUi();closeDragonTreatConfirm();
@@ -4815,7 +4814,6 @@
         if(!actor)return{ok:false,message:'Your dragon is not ready for Dragon Bites right now.'};
         const remain=Math.max(0,getTreatCooldownUntil()-Date.now());
         if(remain>0)return{ok:false,message:`Dragon Bites will be ready again in ${formatTreatCooldown(remain)}.`};
-        if(dragonTreatBalance()<DRAGONBOUND_TREAT_COST)return{ok:false,message:`You need ${DRAGONBOUND_TREAT_COST.toLocaleString('en-GB')} GP to buy Dragon Bites.`};
         try{
           const receipt=await purchaseDragonTreats();
           const name=actor.dragon?.name||'Your dragon';

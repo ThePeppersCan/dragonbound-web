@@ -25,6 +25,31 @@ function toast(message, duration = 3000) {
   node._hideTimer = window.setTimeout(() => node.classList.remove('is-visible'), duration);
 }
 
+async function loadDragonboundStandaloneBank() {
+  if (!character) {
+    bankState.gp = 0;
+    return bankState;
+  }
+
+  try {
+    const { data, error } = await db.rpc('get_my_bank');
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    const gp = Math.max(0, Number(row?.gp) || 0);
+    bankState.gp = gp;
+    bankState.items = row?.items || row?.bank_items || {};
+    // Some older character payloads expose no GP, or a stale copy. Keep the
+    // compatibility field aligned so legacy Dragonbound features read the
+    // authoritative shared Repo Company bank balance.
+    character.gp = gp;
+  } catch (error) {
+    console.warn('Could not refresh the shared Repo Company bank.', error);
+    bankState.gp = Math.max(0, Number(character?.gp) || 0);
+  }
+
+  return bankState;
+}
+
 async function loadDragonboundStandaloneCharacter() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) {
@@ -44,7 +69,7 @@ async function loadDragonboundStandaloneCharacter() {
 
   character = data?.[0] || null;
   if (character) {
-    bankState.gp = Math.max(0, Number(character.gp) || 0);
+    await loadDragonboundStandaloneBank();
     try {
       const { data: racingData, error: racingError } = await db.rpc('get_my_dragon_racing_progression');
       if (racingError) console.warn('Could not load Dragon Racing XP.', racingError);
@@ -68,5 +93,7 @@ window.repoLoadDragonboundCharacter = loadDragonboundStandaloneCharacter;
 window.DragonboundStandaloneRuntime = {
   character: () => character,
   refreshAccount: loadDragonboundStandaloneCharacter,
+  refreshBank: loadDragonboundStandaloneBank,
+  bank: () => ({ ...bankState }),
   toast
 };
